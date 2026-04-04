@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>智慧道路监控终端 - 智能阈值调光系统</title>
+    <!-- ECharts CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(145deg, #e0eafc 0%, #cfdef3 100%);
+            font-family: 'Segoe UI', 'Poppins', system-ui, -apple-system, 'Roboto', sans-serif;
+            padding: 18px 16px 30px;
+            color: #1a2a3a;
+        }
+
+        .app-container {
+            max-width: 550px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(12px);
+            border-radius: 48px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            padding: 20px 18px 28px;
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid rgba(0,0,0,0.08);
+        }
+        h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1f3b4c, #2b5c6f);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+        }
+        .time-box {
+            background: #ffffffcc;
+            padding: 6px 12px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            font-family: monospace;
+            backdrop-filter: blur(4px);
+            color: #1e3a4b;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 12px;
+            margin: 20px 0 16px;
+            background: rgba(255,255,240,0.6);
+            border-radius: 60px;
+            padding: 6px;
+        }
+        .tab-btn {
+            flex: 1;
+            text-align: center;
+            padding: 10px 0;
+            font-weight: 600;
+            border-radius: 40px;
+            background: transparent;
+            border: none;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            color: #2c5368;
+        }
+        .tab-btn.active {
+            background: #ffffffd9;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.05);
+            color: #0077b6;
+            backdrop-filter: blur(4px);
+        }
+        .page {
+            display: none;
+            animation: fadeIn 0.25s ease;
+        }
+        .page.active-page {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+
+        .terminals-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            margin-bottom: 28px;
+        }
+        .terminal-card {
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 32px;
+            padding: 16px 18px;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.7);
+        }
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 800;
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+        }
+        .terminal-name {
+            background: #2c3e50;
+            color: white;
+            padding: 4px 14px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+        }
+        .light-status {
+            padding: 4px 12px;
+            border-radius: 30px;
+            background: #eef2f5;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .brightness-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 12px 0;
+        }
+        .brightness-bar {
+            flex: 1;
+            height: 12px;
+            background: #d4dfe9;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        .brightness-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #f9d423, #fdaa33);
+            border-radius: 20px;
+        }
+        .brightness-val {
+            font-weight: 700;
+            min-width: 48px;
+            font-size: 0.9rem;
+        }
+        .mode-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .ctrl-btn {
+            background: #eef2fa;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: #1f5e7a;
+            flex: 1;
+            text-align: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .ctrl-btn:active { transform: scale(0.96); background: #d4e0ec; }
+        .special-ctrl { background: #ffe3b5; color: #a55800; }
+
+        .config-card {
+            background: rgba(255,255,245,0.8);
+            border-radius: 28px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .param-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            margin: 12px 0;
+        }
+        .param-row label {
+            font-weight: 600;
+            width: 100px;
+        }
+        input, select {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: 40px;
+            border: 1px solid #cddfe7;
+            background: white;
+            font-size: 0.85rem;
+        }
+        button {
+            background: #2c6e9e;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        button:active { transform: scale(0.97); opacity: 0.9; }
+
+        .power-stats {
+            display: flex;
+            justify-content: space-between;
+            background: #ffffffb3;
+            border-radius: 28px;
+            padding: 16px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        .stat-item {
+            text-align: center;
+            flex: 1;
+        }
+        .stat-label {
+            font-size: 0.7rem;
+            opacity: 0.7;
+        }
+        .stat-value {
+            font-weight: 800;
+            font-size: 1.2rem;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7rem;
+            background: #ffffffb3;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        .history-table th, .history-table td {
+            padding: 10px 4px;
+            border-bottom: 1px solid #cbdbe2;
+            text-align: center;
+        }
+
+        .auto-switch {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+        }
+        .toggle-switch {
+            width: 44px;
+            height: 24px;
+            background: #aaa;
+            border-radius: 30px;
+            display: inline-block;
+            position: relative;
+            cursor: pointer;
+        }
+        .toggle-switch.active {
+            background: #2c9e6e;
+        }
+        .toggle-knob {
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 3px;
+            transition: 0.2s;
+        }
+        .toggle-switch.active .toggle-knob {
+            left: 21px;
+        }
+
+        footer {
+            font-size: 0.6rem;
+            text-align: center;
+            margin-top: 20px;
+            opacity: 0.6;
+        }
+        .threshold-hint {
+            font-size: 0.7rem;
+            color: #2c6e5c;
+            margin-top: 6px;
+            padding-left: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="header">
+        <h1>🛣️ 道路智控 · 光端</h1>
+        <div class="time-box" id="networkTime">--:--:--</div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" data-page="main">📡 监控终端</button>
+        <button class="tab-btn" data-page="settings">⚙️ 规则 & 用电</button>
+        <button class="tab-btn" data-page="history">📊 历史用电</button>
+    </div>
+
+    <!-- 页面1: 主监控与控制 -->
+    <div id="mainPage" class="page active-page">
+        <div class="config-card">
+            <div class="param-row">
+                <label>UID</label>
+                <input type="text" id="uidInput" value="28449f804baf4a4a87efedc38a9e60ac">
+            </div>
+            <div class="param-row">
+                <label>数据主题</label>
+                <input type="text" id="dataTopic" value="wlwdaolushuju">
+            </div>
+            <div class="param-row">
+                <label>控制主题</label>
+                <input type="text" id="ctrlTopic" value="wlwdaoluctrl">
+            </div>
+            <button id="updateConfigBtn">🔄 更新并重连</button>
+        </div>
+
+        <div class="terminals-grid" id="terminalsContainer"></div>
+
+        <div style="display: flex; gap: 12px; margin: 10px 0 5px;">
+            <button id="allOddBtn">✨ 全部奇数亮</button>
+            <button id="allEvenBtn">🌙 全部偶数亮</button>
+            <button id="allFullBtn">💡 全部全亮</button>
+            <button id="allOffBtn">❌ 全部灭</button>
+        </div>
+
+        <div class="power-stats">
+            <div class="stat-item"><div class="stat-label">模拟电压</div><div class="stat-value" id="voltageVal">220.0 V</div></div>
+            <div class="stat-item"><div class="stat-label">模拟电流</div><div class="stat-value" id="currentVal">0.00 A</div></div>
+            <div class="stat-item"><div class="stat-label">瞬时功率</div><div class="stat-value" id="powerVal">0 W</div></div>
+            <div class="stat-item"><div class="stat-label">本月用电</div><div class="stat-value" id="monthKwh">0.00 kWh</div></div>
+        </div>
+    </div>
+
+    <!-- 页面2: 阈值/定时/参数设置 增强版 -->
+    <div id="settingsPage" class="page">
+        <div class="config-card">
+            <h3 style="margin-bottom:12px">🌓 智能阈值自动控制 (三段式)</h3>
+            <div class="param-row">
+                <label>🌑 全亮阈值(lux)</label>
+                <input type="number" id="fullBrightThreshold" value="60" step="5">
+                <span style="font-size:0.7rem">低于此值 → 全亮(333)</span>
+            </div>
+            <div class="param-row">
+                <label>🌞 全灭阈值(lux)</label>
+                <input type="number" id="allOffThreshold" value="180" step="5">
+                <span style="font-size:0.7rem">高于此值 → 全灭(444)</span>
+            </div>
+            <div class="param-row">
+                <label>🎲 中间模式</label>
+                <select id="midModeSelect">
+                    <option value="1">奇数亮 (111)</option>
+                    <option value="2" selected>偶数亮 (222)</option>
+                </select>
+                <span style="font-size:0.7rem">亮度介于两阈值之间时下发</span>
+            </div>
+            <div class="auto-switch">
+                <span>🤖 启用三段自动调光</span>
+                <div id="autoLightToggle" class="toggle-switch active"><div class="toggle-knob"></div></div>
+            </div>
+            <div class="threshold-hint">📐 自动逻辑：计算三个终端平均亮度 → 低于全亮阈值→全亮；高于全灭阈值→全灭；中间范围→奇数/偶数模式。</div>
+        </div>
+
+        <div class="config-card">
+            <div class="auto-switch">
+                <span>⏰ 固定时段强制全亮</span>
+                <div id="timeForceToggle" class="toggle-switch"><div class="toggle-knob"></div></div>
+            </div>
+            <div class="param-row">
+                <label>开始时间</label>
+                <input type="time" id="timeStart" value="18:00">
+            </div>
+            <div class="param-row">
+                <label>结束时间</label>
+                <input type="time" id="timeEnd" value="06:00">
+            </div>
+            <button id="saveTimeRule">保存时段规则</button>
+        </div>
+
+        <div class="config-card">
+            <h3>⚡ 用电模拟参数</h3>
+            <div class="param-row"><label>全亮功率(W/终端)</label><input type="number" id="fullPower" value="12"></div>
+            <div class="param-row"><label>奇/偶亮功率(W/终端)</label><input type="number" id="halfPower" value="6"></div>
+            <button id="resetEnergyBtn">重置本月用电量(模拟)</button>
+        </div>
+        <div style="background:#f7f9fc; border-radius: 24px; padding: 14px; margin-top: 12px;">
+            <p style="font-size:0.75rem">📘 说明：手动控制或自动规则下发三位数指令(如131)控制各终端模式。亮度数据由设备上报，三段自动调光根据环境平均亮度智能决策。</p>
+        </div>
+    </div>
+
+    <!-- 页面3: 历史用电量 -->
+    <div id="historyPage" class="page">
+        <div class="config-card">
+            <h3>📅 日用电历史 (最近7天)</h3>
+            <div id="historyChart" style="height: 220px; width: 100%;"></div>
+            <table class="history-table" id="historyTable">
+                <thead><tr><th>日期</th><th>用电量(kWh)</th></tr></thead>
+                <tbody id="historyTableBody"><tr><td colspan="2">加载中...</td></tr></tbody>
+            </table>
+            <button id="clearHistoryBtn" style="margin-top: 12px; background:#9e6b3e;">🗑️ 清空历史记录</button>
+        </div>
+    </div>
+    <footer>巴法云TCP透传 | 智能三段阈值 | 实时轮询</footer>
+</div>
+
+<script>
+    // ----------------------------- 全局变量 -----------------------------
+    let uid = document.getElementById('uidInput').value;
+    let dataTopic = document.getElementById('dataTopic').value;
+    let ctrlTopic = document.getElementById('ctrlTopic').value;
+
+    // 终端数据: 亮度, 当前模式(1-4)
+    let terminals = [
+        { id: 1, brightness: 0, mode: 4 },
+        { id: 2, brightness: 0, mode: 4 },
+        { id: 3, brightness: 0, mode: 4 }
+    ];
+    let lastModeSnapshot = [4,4,4];
+    let lastTimestamp = Date.now();
+    let currentTotalPower = 0;
+    let monthEnergyKwh = 0;
+    let dailyEnergyMap = new Map();
+    
+    // 自动控制开关及阈值参数
+    let autoLightEnabled = true;
+    let timeForceEnabled = false;
+    let timeStart = "18:00", timeEnd = "06:00";
+    // 三段阈值
+    let fullBrightThreshold = 60;   // 低于此值全亮
+    let allOffThreshold = 180;      // 高于此值全灭
+    let midMode = 2;                // 1:奇数亮(111) 2:偶数亮(222)
+    
+    // 功耗参数
+    let fullPowerW = 12;
+    let halfPowerW = 6;
+    
+    let pollInterval = null;
+    let autoRuleInterval = null;
+    let historyChart = null;
+    
+    function modeToText(mode) {
+        if(mode === 1) return "✨ 奇数亮";
+        if(mode === 2) return "🌙 偶数亮";
+        if(mode === 3) return "💎 全亮";
+        return "⚫ 全灭";
+    }
+    
+    function getTerminalPower(mode) {
+        if(mode === 3) return fullPowerW;
+        if(mode === 1 || mode === 2) return halfPowerW;
+        return 0;
+    }
+    
+    function accumulateEnergyByModeChange(newModes) {
+        const now = Date.now();
+        let dtHours = (now - lastTimestamp) / 3600000;
+        if(dtHours > 0.5) dtHours = 0.5;
+        if(dtHours > 0) {
+            let avgPower = 0;
+            for(let i=0;i<3;i++) avgPower += getTerminalPower(lastModeSnapshot[i]);
+            let energyKwh = (avgPower * dtHours) / 1000;
+            if(energyKwh>0 && energyKwh<50) {
+                monthEnergyKwh += energyKwh;
+                const today = new Date().toISOString().slice(0,10);
+                const currentDayEnergy = dailyEnergyMap.get(today) || 0;
+                dailyEnergyMap.set(today, currentDayEnergy + energyKwh);
+                saveDailyHistory();
+            }
+        }
+        lastTimestamp = now;
+        lastModeSnapshot = [...newModes];
+        document.getElementById('monthKwh').innerText = monthEnergyKwh.toFixed(2);
+        updatePowerStatsDisplay(newModes);
+        refreshHistoryTableAndChart();
+    }
+    
+    function updatePowerStatsDisplay(modes) {
+        let totalW = 0;
+        for(let i=0;i<3;i++) totalW += getTerminalPower(modes[i]);
+        currentTotalPower = totalW;
+        let voltage = 220.0;
+        let currentA = totalW / voltage;
+        document.getElementById('powerVal').innerText = totalW.toFixed(1) + " W";
+        document.getElementById('currentVal').innerText = currentA.toFixed(2) + " A";
+        document.getElementById('voltageVal').innerText = voltage.toFixed(1) + " V";
+    }
+    
+    function saveDailyHistory() {
+        let obj = {};
+        for(let [k,v] of dailyEnergyMap.entries()) obj[k] = v;
+        localStorage.setItem('lighting_energy_daily', JSON.stringify(obj));
+        localStorage.setItem('month_energy_kwh', monthEnergyKwh.toString());
+    }
+    
+    function loadDailyHistory() {
+        const stored = localStorage.getItem('lighting_energy_daily');
+        if(stored) {
+            try{
+                let obj = JSON.parse(stored);
+                dailyEnergyMap = new Map(Object.entries(obj));
+            }catch(e){}
+        }
+        const storedMonth = localStorage.getItem('month_energy_kwh');
+        if(storedMonth) monthEnergyKwh = parseFloat(storedMonth) || 0;
+        document.getElementById('monthKwh').innerText = monthEnergyKwh.toFixed(2);
+        refreshHistoryTableAndChart();
+    }
+    
+    function refreshHistoryTableAndChart() {
+        let dates = Array.from(dailyEnergyMap.keys()).sort().reverse().slice(0,7);
+        let tbody = document.getElementById('historyTableBody');
+        if(dates.length===0) { tbody.innerHTML='<tr><td colspan="2">暂无数据</td></tr>'; }
+        else {
+            tbody.innerHTML = dates.map(d => `<tr><td>${d}</td><td>${dailyEnergyMap.get(d).toFixed(3)} kWh</td></tr>`).join('');
+        }
+        if(historyChart) {
+            let sortedDates = Array.from(dailyEnergyMap.keys()).sort();
+            let values = sortedDates.map(d => dailyEnergyMap.get(d));
+            historyChart.setOption({
+                xAxis: { data: sortedDates },
+                series: [{ data: values, name: '日用电(kWh)' }]
+            });
+        }
+    }
+    
+    function renderTerminals() {
+        const container = document.getElementById('terminalsContainer');
+        container.innerHTML = '';
+        for(let i=0;i<3;i++) {
+            const t = terminals[i];
+            const idx = i;
+            const modeText = modeToText(t.mode);
+            const brightnessVal = t.brightness;
+            const fillPercent = Math.min(100, (brightnessVal / 200) * 100);
+            const card = document.createElement('div');
+            card.className = 'terminal-card';
+            card.innerHTML = `
+                <div class="terminal-header">
+                    <span class="terminal-name">终端 ${t.id}</span>
+                    <span class="light-status">${modeText}</span>
+                </div>
+                <div class="brightness-row">
+                    <span>🌞 亮度</span>
+                    <div class="brightness-bar"><div class="brightness-fill" style="width: ${fillPercent}%;"></div></div>
+                    <span class="brightness-val">${brightnessVal} lux</span>
+                </div>
+                <div class="mode-buttons">
+                    <button class="ctrl-btn" data-term="${idx}" data-mode="1">奇数亮</button>
+                    <button class="ctrl-btn" data-term="${idx}" data-mode="2">偶数亮</button>
+                    <button class="ctrl-btn special-ctrl" data-term="${idx}" data-mode="3">全亮</button>
+                    <button class="ctrl-btn" data-term="${idx}" data-mode="4">全灭</button>
+                </div>
+            `;
+            container.appendChild(card);
+        }
+        document.querySelectorAll('.ctrl-btn[data-term]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const termIdx = parseInt(btn.dataset.term);
+                const modeVal = parseInt(btn.dataset.mode);
+                sendSingleTerminalCommand(termIdx, modeVal);
+            });
+        });
+    }
+    
+    function sendSingleTerminalCommand(termIdx, mode) {
+        let newCode = [terminals[0].mode, terminals[1].mode, terminals[2].mode];
+        newCode[termIdx] = mode;
+        let cmdStr = newCode.join('');
+        sendControlCommand(cmdStr);
+    }
+    
+    async function sendControlCommand(cmdThree) {
+        if(!uid || !ctrlTopic) { alert("请填写完整的UID/控制主题"); return; }
+        const url = "https://apis.bemfa.com/va/postmsg";
+        const params = new URLSearchParams();
+        params.append('uid', uid);
+        params.append('topic', ctrlTopic);
+        params.append('type', '3');
+        params.append('msg', cmdThree);
+        try {
+            await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: params });
+            console.log(`下发指令: ${cmdThree}`);
+        } catch(e) { console.warn("下发失败", e); }
+    }
+    
+    function allSameMode(modeVal) {
+        let cmd = `${modeVal}${modeVal}${modeVal}`;
+        sendControlCommand(cmd);
+    }
+    
+    // 获取三个终端的平均亮度
+    function getAverageBrightness() {
+        let sum = 0;
+        for(let t of terminals) sum += t.brightness;
+        return sum / 3;
+    }
+    
+    // 增强自动控制逻辑：三段阈值 + 时段强制
+    function applyAutoRules() {
+        if(!autoLightEnabled && !timeForceEnabled) return;
+        
+        // 时段强制全亮优先
+        const now = new Date();
+        const currentTimeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+        let forceFull = false;
+        if(timeForceEnabled) {
+            let start = timeStart, end = timeEnd;
+            if(start <= end) forceFull = (currentTimeStr >= start && currentTimeStr <= end);
+            else forceFull = (currentTimeStr >= start || currentTimeStr <= end);
+        }
+        if(forceFull) {
+            let curCmd = [terminals[0].mode, terminals[1].mode, terminals[2].mode].join('');
+            if(curCmd !== '333') sendControlCommand('333');
+            return;
+        }
+        
+        // 三段自动调光
+        if(autoLightEnabled) {
+            const avgLux = getAverageBrightness();
+            let targetCmd = null;
+            if(avgLux < fullBrightThreshold) {
+                targetCmd = '333';   // 全亮
+            } 
+            else if(avgLux > allOffThreshold) {
+                targetCmd = '444';   // 全灭
+            }
+            else {
+                // 中间区域：奇数或偶数模式 (全局统一)
+                targetCmd = midMode === 1 ? '111' : '222';
+            }
+            if(targetCmd) {
+                let currentCmd = terminals.map(t=>t.mode).join('');
+                if(currentCmd !== targetCmd) {
+                    sendControlCommand(targetCmd);
+                }
+            }
+        }
+    }
+    
+    async function fetchSensorData() {
+        if(!uid || !dataTopic) return;
+        const url = `https://apis.bemfa.com/va/getmsg?uid=${uid}&topic=${dataTopic}&type=3&num=1`;
+        try {
+            const resp = await fetch(url);
+            const json = await resp.json();
+            if(json && json.data && json.data.length>0) {
+                const rawMsg = json.data[0].msg;
+                if(rawMsg && rawMsg.startsWith('#') && rawMsg.endsWith('#')) {
+                    const parts = rawMsg.substring(1, rawMsg.length-1).split('#');
+                    if(parts.length >= 4) {
+                        let b1 = parseFloat(parts[0]) || 0;
+                        let b2 = parseFloat(parts[1]) || 0;
+                        let b3 = parseFloat(parts[2]) || 0;
+                        let stateCode = parts[3].toString();
+                        while(stateCode.length < 3) stateCode = '0'+stateCode;
+                        const mode1 = parseInt(stateCode.charAt(0)) || 4;
+                        const mode2 = parseInt(stateCode.charAt(1)) || 4;
+                        const mode3 = parseInt(stateCode.charAt(2)) || 4;
+                        const newModes = [mode1, mode2, mode3];
+                        for(let i=0;i<3;i++) {
+                            terminals[i].brightness = [b1,b2,b3][i];
+                            if(terminals[i].mode !== newModes[i]) {
+                                terminals[i].mode = newModes[i];
+                            }
+                        }
+                        accumulateEnergyByModeChange(newModes);
+                        renderTerminals();
+                    }
+                }
+            }
+        } catch(err) { console.error("轮询错误", err); }
+    }
+    
+    function startAutoRuleTimer() {
+        if(autoRuleInterval) clearInterval(autoRuleInterval);
+        autoRuleInterval = setInterval(() => {
+            applyAutoRules();
+        }, 2500);
+    }
+    
+    function updateNetworkTime() {
+        const now = new Date();
+        document.getElementById('networkTime').innerText = now.toLocaleTimeString('zh-CN', {hour12: false});
+    }
+    
+    function reloadConfig() {
+        uid = document.getElementById('uidInput').value.trim();
+        dataTopic = document.getElementById('dataTopic').value.trim();
+        ctrlTopic = document.getElementById('ctrlTopic').value.trim();
+        if(pollInterval) clearInterval(pollInterval);
+        pollInterval = setInterval(() => { fetchSensorData(); }, 900);
+        fetchSensorData();
+    }
+    
+    function bindSwitchesAndParams() {
+        // 三段阈值控件
+        const fullThresInput = document.getElementById('fullBrightThreshold');
+        const offThresInput = document.getElementById('allOffThreshold');
+        const midSelect = document.getElementById('midModeSelect');
+        fullThresInput.addEventListener('change',()=>{ fullBrightThreshold = parseFloat(fullThresInput.value) || 60; });
+        offThresInput.addEventListener('change',()=>{ allOffThreshold = parseFloat(offThresInput.value) || 180; });
+        midSelect.addEventListener('change',()=>{ midMode = parseInt(midSelect.value); });
+        
+        // 自动调光开关
+        const autoToggle = document.getElementById('autoLightToggle');
+        const timeToggle = document.getElementById('timeForceToggle');
+        autoToggle.addEventListener('click',()=>{
+            autoLightEnabled = !autoLightEnabled;
+            if(autoLightEnabled) autoToggle.classList.add('active');
+            else autoToggle.classList.remove('active');
+        });
+        timeToggle.addEventListener('click',()=>{
+            timeForceEnabled = !timeForceEnabled;
+            if(timeForceEnabled) timeToggle.classList.add('active');
+            else timeToggle.classList.remove('active');
+        });
+        
+        document.getElementById('saveTimeRule').addEventListener('click',()=>{
+            timeStart = document.getElementById('timeStart').value;
+            timeEnd = document.getElementById('timeEnd').value;
+            alert("时段规则已保存");
+        });
+        
+        document.getElementById('fullPower').addEventListener('change',(e)=>{ fullPowerW = parseFloat(e.target.value)||12; });
+        document.getElementById('halfPower').addEventListener('change',(e)=>{ halfPowerW = parseFloat(e.target.value)||6; });
+        document.getElementById('resetEnergyBtn').addEventListener('click',()=>{
+            monthEnergyKwh = 0;
+            dailyEnergyMap.clear();
+            saveDailyHistory();
+            document.getElementById('monthKwh').innerText = "0.00";
+            refreshHistoryTableAndChart();
+        });
+        document.getElementById('clearHistoryBtn').addEventListener('click',()=>{
+            dailyEnergyMap.clear();
+            monthEnergyKwh = 0;
+            saveDailyHistory();
+            refreshHistoryTableAndChart();
+            document.getElementById('monthKwh').innerText = "0.00";
+        });
+        
+        document.getElementById('allOddBtn').onclick = ()=> allSameMode(1);
+        document.getElementById('allEvenBtn').onclick = ()=> allSameMode(2);
+        document.getElementById('allFullBtn').onclick = ()=> allSameMode(3);
+        document.getElementById('allOffBtn').onclick = ()=> allSameMode(4);
+        document.getElementById('updateConfigBtn').onclick = ()=>{ reloadConfig(); };
+        
+        // 初始化当前值
+        fullBrightThreshold = parseFloat(fullThresInput.value);
+        allOffThreshold = parseFloat(offThresInput.value);
+        midMode = parseInt(midSelect.value);
+    }
+    
+    function initChart() {
+        const dom = document.getElementById('historyChart');
+        if(dom) {
+            historyChart = echarts.init(dom);
+            historyChart.setOption({
+                tooltip: { trigger: 'axis' },
+                xAxis: { type: 'category', name: '日期' },
+                yAxis: { type: 'value', name: 'kWh' },
+                series: [{ type: 'line', smooth: true, data: [], lineStyle: { color: '#f39c12' }, areaStyle: { opacity: 0.2 } }]
+            });
+        }
+    }
+    
+    function setupTabs() {
+        document.querySelectorAll('.tab-btn').forEach(btn=>{
+            btn.addEventListener('click',()=>{
+                document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+                btn.classList.add('active');
+                const pageId = btn.dataset.page;
+                document.querySelectorAll('.page').forEach(p=>p.classList.remove('active-page'));
+                if(pageId === 'main') document.getElementById('mainPage').classList.add('active-page');
+                if(pageId === 'settings') document.getElementById('settingsPage').classList.add('active-page');
+                if(pageId === 'history') document.getElementById('historyPage').classList.add('active-page');
+                if(pageId === 'history' && historyChart) historyChart.resize();
+            });
+        });
+    }
+    
+    async function init() {
+        loadDailyHistory();
+        initChart();
+        bindSwitchesAndParams();
+        setupTabs();
+        renderTerminals();
+        // 确保阈值变量同步
+        fullBrightThreshold = parseFloat(document.getElementById('fullBrightThreshold').value);
+        allOffThreshold = parseFloat(document.getElementById('allOffThreshold').value);
+        midMode = parseInt(document.getElementById('midModeSelect').value);
+        autoLightEnabled = true;
+        document.getElementById('autoLightToggle').classList.add('active');
+        reloadConfig();
+        startAutoRuleTimer();
+        setInterval(updateNetworkTime, 1000);
+        updateNetworkTime();
+        lastTimestamp = Date.now();
+        lastModeSnapshot = [4,4,4];
+    }
+    init();
+</script>
+</body>
+</html>
